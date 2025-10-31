@@ -7,6 +7,7 @@ import { Star, MapPin, Building2, ArrowRight, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 
 interface InstitutionProfile {
   id: string;
@@ -270,6 +271,9 @@ export default function Institutions() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Users, BookOpen, GraduationCap, Star, Heart, Target, Globe, Award, Lightbulb, TrendingUp, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 
 const values = [
   {
@@ -313,6 +314,9 @@ export default function About() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

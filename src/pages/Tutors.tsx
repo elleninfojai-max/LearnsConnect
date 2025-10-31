@@ -9,6 +9,7 @@ import { Star, MapPin, BookOpen, ArrowRight, Users, Search } from 'lucide-react'
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 
 interface TutorProfile {
   id: string;
@@ -706,6 +707,9 @@ export default function Tutors() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

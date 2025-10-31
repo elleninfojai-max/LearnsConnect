@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Users, BookOpen, GraduationCap, Star, Clock, MapPin, Building2, UserCheck, Shield, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 
 const steps = [
   {
@@ -356,6 +357,9 @@ export default function HowItWorks() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

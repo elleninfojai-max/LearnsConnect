@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 import { ArrowRight, BookOpen, Users, MapPin, Star, CheckCircle, Globe, Sparkles, Award, Clock, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-learning.jpg";
@@ -259,15 +260,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-background border-t border-border/50 py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              © 2025 Ellen Information Technology Solutions Pvt. Ltd. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
