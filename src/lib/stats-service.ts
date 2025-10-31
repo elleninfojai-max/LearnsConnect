@@ -11,6 +11,12 @@ export interface LandingPageStats {
 }
 
 export class StatsService {
+  // Base numbers that will be displayed initially
+  private static readonly BASE_ACTIVE_STUDENTS = 614926;
+  private static readonly BASE_EXPERT_TUTORS = 12035;
+  private static readonly BASE_PARTNER_INSTITUTIONS = 10;
+  private static readonly BASE_SUCCESS_RATE = 84;
+
   private static cache: {
     stats: LandingPageStats | null;
     timestamp: number;
@@ -50,10 +56,11 @@ export class StatsService {
         this.getAverageRating()
       ]);
 
+      // Add base numbers to actual database counts
       const stats: LandingPageStats = {
-        activeStudents: studentsCount,
-        expertTutors: tutorsCount,
-        partnerInstitutions: institutionsCount,
+        activeStudents: this.BASE_ACTIVE_STUDENTS + studentsCount,
+        expertTutors: this.BASE_EXPERT_TUTORS + tutorsCount,
+        partnerInstitutions: this.BASE_PARTNER_INSTITUTIONS + institutionsCount,
         successRate: successRate,
         totalCourses: coursesCount,
         totalSessions: sessionsCount,
@@ -74,10 +81,10 @@ export class StatsService {
       }
       
       return {
-        activeStudents: 614926,
-        expertTutors: 12035,
-        partnerInstitutions: 10,
-        successRate: 84
+        activeStudents: this.BASE_ACTIVE_STUDENTS,
+        expertTutors: this.BASE_EXPERT_TUTORS,
+        partnerInstitutions: this.BASE_PARTNER_INSTITUTIONS,
+        successRate: this.BASE_SUCCESS_RATE
       };
     }
   }
@@ -94,15 +101,15 @@ export class StatsService {
 
       if (error) {
         console.error('Error fetching active students count:', error);
-        // Fallback to a reasonable default if query fails
-        return 750000;
+        // Return 0 if query fails - base number will still be displayed
+        return 0;
       }
 
       return count || 0;
     } catch (error) {
       console.error('Error in getActiveStudentsCount:', error);
-      // Fallback to a reasonable default if query fails
-      return 750000;
+      // Return 0 if query fails - base number will still be displayed
+      return 0;
     }
   }
 
@@ -118,15 +125,15 @@ export class StatsService {
 
       if (error) {
         console.error('Error fetching expert tutors count:', error);
-        // Fallback to a reasonable default if query fails
-        return 12035;
+        // Return 0 if query fails - base number will still be displayed
+        return 0;
       }
 
       return count || 0;
     } catch (error) {
       console.error('Error in getExpertTutorsCount:', error);
-      // Fallback to a reasonable default if query fails
-      return 12035;
+      // Return 0 if query fails - base number will still be displayed
+      return 0;
     }
   }
 
@@ -142,15 +149,15 @@ export class StatsService {
 
       if (error) {
         console.error('Error fetching partner institutions count:', error);
-        // Fallback to a reasonable default if query fails
-        return 10;
+        // Return 0 if query fails - base number will still be displayed
+        return 0;
       }
 
       return count || 0;
     } catch (error) {
       console.error('Error in getPartnerInstitutionsCount:', error);
-      // Fallback to a reasonable default if query fails
-      return 10;
+      // Return 0 if query fails - base number will still be displayed
+      return 0;
     }
   }
 
@@ -158,8 +165,8 @@ export class StatsService {
    * Calculate success rate based on verified profiles and other metrics
    */
   private static async getSuccessRate(): Promise<number> {
-    // Return hardcoded value as requested
-    return 84;
+    // Return base success rate
+    return this.BASE_SUCCESS_RATE;
   }
 
   /**
@@ -233,14 +240,6 @@ export class StatsService {
       console.error('Error fetching average rating:', error);
       return 0;
     }
-  }
-
-  /**
-   * Clear the cache to force a fresh fetch
-   */
-  static clearCache(): void {
-    this.cache.stats = null;
-    this.cache.timestamp = 0;
   }
 
   /**
