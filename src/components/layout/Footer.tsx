@@ -10,10 +10,7 @@ import {
   Phone, 
   MapPin,
   Facebook,
-  Twitter,
   Instagram,
-  Linkedin,
-  Youtube,
   ArrowRight,
   CheckCircle,
   Star,
@@ -70,7 +67,7 @@ export function Footer() {
               <p className="text-sm font-semibold text-foreground mb-3">Follow Us</p>
               <div className="flex items-center space-x-3">
                 <a 
-                  href="https://facebook.com" 
+                  href="https://www.facebook.com/share/16HM2wUVAs/?mibextid=wwXIfr" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
@@ -79,40 +76,13 @@ export function Footer() {
                   <Facebook className="h-4 w-4" />
                 </a>
                 <a 
-                  href="https://twitter.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-                  aria-label="Twitter"
-                >
-                  <Twitter className="h-4 w-4" />
-                </a>
-                <a 
-                  href="https://instagram.com" 
+                  href="https://www.instagram.com/learnsconnect?igsh=MWljaXNnMmg2ZG41YQ%3D%3D&utm_source=qr" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
                   aria-label="Instagram"
                 >
                   <Instagram className="h-4 w-4" />
-                </a>
-                <a 
-                  href="https://linkedin.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-                  aria-label="LinkedIn"
-                >
-                  <Linkedin className="h-4 w-4" />
-                </a>
-                <a 
-                  href="https://youtube.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-                  aria-label="YouTube"
-                >
-                  <Youtube className="h-4 w-4" />
                 </a>
               </div>
             </div>
@@ -317,15 +287,6 @@ export function Footer() {
                   >
                     <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <span>About Us</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link 
-                    to="/about" 
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 group"
-                  >
-                    <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <span>Our Mission</span>
                   </Link>
                 </li>
                 <li>
