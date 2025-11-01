@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Users, BookOpen, GraduationCap, Star, Heart, Target, Globe, Award, Lightbulb, TrendingUp, Shield } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 
@@ -71,6 +72,13 @@ const team = [
 ];
 
 export default function About() {
+  const location = useLocation();
+
+  // Scroll to top when navigating to About page
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Header />

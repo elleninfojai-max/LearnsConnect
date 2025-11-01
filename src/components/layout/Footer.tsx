@@ -321,7 +321,7 @@ export function Footer() {
                 </li>
                 <li>
                   <Link 
-                    to="/about#mission" 
+                    to="/about" 
                     className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 group"
                   >
                     <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -330,7 +330,7 @@ export function Footer() {
                 </li>
                 <li>
                   <Link 
-                    to="/about#team" 
+                    to="/about" 
                     className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 group"
                   >
                     <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -364,15 +364,15 @@ export function Footer() {
               <ul className="space-y-2.5">
                 <li className="flex items-start gap-2 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span>info@learnsconnect.com</span>
+                  <span>support@learnsconnect.com</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm text-muted-foreground">
                   <Phone className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span>+91 123 456 7890</span>
+                  <span>+91 8489357705</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span>India</span>
+                  <span>8/3, Athreyapuram 2nd Street, Choolaimedu, Chennai – 600094</span>
                 </li>
               </ul>
             </div>

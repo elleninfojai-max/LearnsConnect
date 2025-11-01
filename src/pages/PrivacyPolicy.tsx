@@ -1,10 +1,19 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Eye, Lock, Users, Globe, Mail, Phone, Calendar } from 'lucide-react';
 
 export default function PrivacyPolicy() {
+  const location = useLocation();
   const lastUpdated = "January 1, 2025";
+
+  // Scroll to top when navigating to Privacy Policy page
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -396,13 +405,13 @@ export default function PrivacyPolicy() {
                       <div className="flex items-center gap-2">
                         <Mail className="h-4 w-4 text-primary" />
                         <span className="text-sm">
-                          <strong>Email:</strong> privacy@learnsconnect.com
+                          <strong>Email:</strong> support@learnsconnect.com
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4 text-primary" />
                         <span className="text-sm">
-                          <strong>Phone:</strong> +1 (555) 123-4567
+                          <strong>Phone:</strong> +91 8489357705
                         </span>
                       </div>
                     </div>
@@ -410,8 +419,8 @@ export default function PrivacyPolicy() {
                     <div className="space-y-2">
                       <p className="text-sm font-semibold">Ellen Information Technology Solutions Pvt. Ltd.</p>
                       <p className="text-sm text-muted-foreground">
-                        123 Education Street<br />
-                        Learning City, LC 12345<br />
+                        8/3, Athreyapuram 2nd Street<br />
+                        Choolaimedu, Chennai – 600094<br />
                         India
                       </p>
                     </div>
@@ -430,6 +439,9 @@ export default function PrivacyPolicy() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
