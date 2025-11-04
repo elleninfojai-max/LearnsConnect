@@ -39,37 +39,286 @@ export default function Institutions() {
     try {
       setLoading(true);
       
-      // First fetch institution profiles
-      const { data: institutionData, error: institutionError } = await supabase
-        .from('institution_profiles')
-        .select('*')
-        .eq('verified', true)
-        .order('created_at', { ascending: false })
-        .limit(6); // Show max 6 institutions
+      // NEW STRATEGY: Start with verification_requests (this table is more accessible)
+      // Find all verified institutions from verification_requests first
+      console.log('🔍 Step 1: Fetching ALL verified institutions from verification_requests...');
+      
+      // First, get ALL verification_requests (for debugging)
+      const { data: allVerificationRequestsDebug, error: allVerificationErrorDebug } = await supabase
+        .from('verification_requests')
+        .select('user_id, status, user_type')
+        .in('user_type', ['institute', 'institution']);
+      
+      if (!allVerificationErrorDebug) {
+        console.log('📊 Total verification_requests (all statuses):', allVerificationRequestsDebug?.length || 0);
+        allVerificationRequestsDebug?.forEach(req => {
+          console.log(`  - user_id: ${req.user_id}, status: ${req.status}, user_type: ${req.user_type}`);
+        });
+      }
+      
+      // Now get only verified ones
+      const { data: allVerificationRequests, error: allVerificationError } = await supabase
+        .from('verification_requests')
+        .select('user_id, status, user_type')
+        .in('user_type', ['institute', 'institution'])
+        .eq('status', 'verified'); // Only get verified ones
 
-      if (institutionError) {
-        console.error('Error fetching institution profiles:', institutionError);
-        return;
+      if (allVerificationError) {
+        console.error('❌ Error fetching verification requests:', allVerificationError);
+      } else {
+        console.log('✅ Found verified institutions in verification_requests:', allVerificationRequests?.length || 0);
+        allVerificationRequests?.forEach(req => {
+          console.log(`  - user_id: ${req.user_id}, user_type: ${req.user_type}`);
+        });
       }
 
+      // Get user_ids from verification_requests
+      const verifiedUserIdsFromRequests = allVerificationRequests?.map(req => req.user_id) || [];
+      console.log('📋 Verified user IDs from verification_requests:', verifiedUserIdsFromRequests);
+
+      // Step 2: Also fetch institutions with verified=true in institution_profiles (in case RLS allows it)
+      console.log('🔍 Step 2: Fetching institutions with verified=true in institution_profiles...');
+      const { data: verifiedInProfileData, error: verifiedInProfileError } = await supabase
+        .from('institution_profiles')
+        .select('id, user_id, institution_name, verified, status, created_at')
+        .eq('verified', true)
+        .order('created_at', { ascending: false });
+
+      if (verifiedInProfileError) {
+        console.warn('⚠️ Error fetching verified institutions from profiles:', verifiedInProfileError);
+      } else {
+        console.log('✅ Found institutions with verified=true:', verifiedInProfileData?.length || 0);
+        verifiedInProfileData?.forEach(inst => {
+          console.log(`  - ${inst.institution_name || 'Unknown'}: user_id=${inst.user_id}, verified=${inst.verified}, status=${inst.status}`);
+        });
+      }
+
+      // Also try fetching ALL institution_profiles (for debugging) to see what RLS allows
+      console.log('🔍 Step 2b: Attempting to fetch ALL institution_profiles (for debugging)...');
+      const { data: allInstitutionProfiles, error: allProfilesError } = await supabase
+        .from('institution_profiles')
+        .select('*') // Fetch ALL columns to get complete data
+        .order('created_at', { ascending: false });
+
+      if (allProfilesError) {
+        console.warn('⚠️ Error fetching ALL institution_profiles:', allProfilesError);
+        console.log('⚠️ RLS might be blocking access. Will rely on verified=true query only.');
+      } else {
+        console.log('📊 Total institution_profiles in database (RLS allowing):', allInstitutionProfiles?.length || 0);
+        allInstitutionProfiles?.forEach(inst => {
+          const verified = inst.verified === true || inst.verified === 'true' || inst.verified === 1 || inst.verified === '1';
+          const approved = inst.status === 'approved';
+          console.log(`  - ${inst.institution_name || 'Unknown'}: user_id=${inst.user_id}, verified=${verified}, status=${inst.status || 'null'}`);
+        });
+        
+        // Check if there are verified institutions that weren't in the first query
+        const verifiedButNotInFirstQuery = allInstitutionProfiles?.filter(inst => {
+          const verified = inst.verified === true || inst.verified === 'true' || inst.verified === 1 || inst.verified === '1';
+          const approved = inst.status === 'approved';
+          return (verified || approved) && !verifiedInProfileData?.some(v => v.user_id === inst.user_id);
+        }) || [];
+        
+        if (verifiedButNotInFirstQuery.length > 0) {
+          console.log(`⚠️ Found ${verifiedButNotInFirstQuery.length} additional verified institutions in full query:`);
+          verifiedButNotInFirstQuery.forEach(inst => {
+            console.log(`  - ${inst.institution_name || 'Unknown'}: user_id=${inst.user_id}, verified=${inst.verified}, status=${inst.status}`);
+          });
+        }
+      }
+
+      // Step 3: Fetch institution_profiles for user_ids from verification_requests
+      // This is the key - even if verified=false in institution_profiles, if it's verified in verification_requests, we should show it
+      let institutionsFromRequests: any[] = [];
+      if (verifiedUserIdsFromRequests.length > 0) {
+        console.log('🔍 Step 3: Fetching institution_profiles for verified user_ids...');
+        const { data: instData, error: instError } = await supabase
+          .from('institution_profiles')
+          .select('*')
+          .in('user_id', verifiedUserIdsFromRequests)
+          .order('created_at', { ascending: false });
+
+        if (instError) {
+          console.error('❌ Error fetching institution_profiles for verified user_ids:', instError);
+          console.log('⚠️ This might be due to RLS blocking access. Institution might still be verified via verification_requests.');
+        } else {
+          institutionsFromRequests = instData || [];
+          console.log('✅ Found institution_profiles for verified user_ids:', institutionsFromRequests.length);
+          institutionsFromRequests.forEach(inst => {
+            console.log(`  - ${inst.institution_name || 'Unknown'}: verified=${inst.verified}, user_id=${inst.user_id}`);
+          });
+        }
+      }
+
+      // Step 4: Combine both sources and remove duplicates
+      const allVerifiedInstitutions: any[] = [];
+      const addedUserIds = new Set<string>();
+
+      // PRIORITY 1: Add ALL institutions with verified=true OR status=approved in institution_profiles
+      // Use allInstitutionProfiles if available (has all data), otherwise use verifiedInProfileData
+      const allVerifiedInProfiles = allInstitutionProfiles?.filter(inst => {
+        const verified = inst.verified === true || inst.verified === 'true' || inst.verified === 1 || inst.verified === '1';
+        const approved = inst.status === 'approved';
+        return verified || approved;
+      }) || [];
+      
+      // If we got full data from allInstitutionProfiles, use it directly
+      // Otherwise, fetch full data for verified institutions
+      if (allInstitutionProfiles && allInstitutionProfiles.length > 0) {
+        // We already have full data from allInstitutionProfiles query
+        console.log('📋 Using full data from allInstitutionProfiles query');
+        allVerifiedInProfiles.forEach(inst => {
+          if (!addedUserIds.has(inst.user_id)) {
+            inst.verified = true; // Ensure verified is true
+            allVerifiedInstitutions.push(inst);
+            addedUserIds.add(inst.user_id);
+            console.log(`  ✅ Added from institution_profiles: ${inst.institution_name || inst.user_id}`);
+          }
+        });
+      } else {
+        // Fallback: fetch full data for verified institutions
+        const verifiedInstitutionsToAdd = verifiedInProfileData || [];
+        console.log('📋 Institutions to add from institution_profiles (verified=true):', verifiedInstitutionsToAdd.length);
+        
+        const verifiedUserIdsToFetch = verifiedInstitutionsToAdd.map(inst => inst.user_id).filter((id, index, self) => self.indexOf(id) === index);
+        
+        if (verifiedUserIdsToFetch.length > 0) {
+          console.log('🔍 Fetching full data for verified institutions...');
+          const { data: fullData, error: fullDataError } = await supabase
+            .from('institution_profiles')
+            .select('*')
+            .in('user_id', verifiedUserIdsToFetch);
+          
+          if (!fullDataError && fullData) {
+            console.log(`✅ Fetched full data for ${fullData.length} institutions`);
+            fullData.forEach(fullInst => {
+              if (!addedUserIds.has(fullInst.user_id)) {
+                fullInst.verified = true;
+                allVerifiedInstitutions.push(fullInst);
+                addedUserIds.add(fullInst.user_id);
+                console.log(`  ✅ Added from institution_profiles: ${fullInst.institution_name || fullInst.user_id}`);
+              }
+            });
+          } else {
+            console.warn('⚠️ Error fetching full data, using partial data:', fullDataError);
+            verifiedInstitutionsToAdd.forEach(inst => {
+              if (!addedUserIds.has(inst.user_id)) {
+                const partialInst = { ...inst, verified: true };
+                allVerifiedInstitutions.push(partialInst);
+                addedUserIds.add(inst.user_id);
+                console.log(`  ✅ Added (partial data): ${inst.institution_name || inst.user_id}`);
+              }
+            });
+          }
+        }
+      }
+
+      // Add institutions from verification_requests (even if verified=false in institution_profiles)
+      institutionsFromRequests.forEach(inst => {
+        if (!addedUserIds.has(inst.user_id)) {
+          // Mark as verified since verification_requests says so
+          inst.verified = true;
+          allVerifiedInstitutions.push(inst);
+          addedUserIds.add(inst.user_id);
+        }
+      });
+
+      // Step 5: If we have verified user_ids but couldn't fetch their institution_profiles,
+      // try to get basic info from the profiles table and create minimal entries
+      const missingUserIds = verifiedUserIdsFromRequests.filter(userId => !addedUserIds.has(userId));
+      if (missingUserIds.length > 0) {
+        console.log(`⚠️ Found ${missingUserIds.length} verified institutions without institution_profiles. Fetching from profiles table...`);
+        
+        // Fetch basic profile data from profiles table for these user_ids
+        // CRITICAL: verification_requests.user_id = auth.users.id = profiles.user_id (NOT profiles.id)
+        console.log('🔍 Fetching profiles for missing user_ids:', missingUserIds);
+        let { data: missingProfiles, error: missingProfilesError } = await supabase
+          .from('profiles')
+          .select('id, user_id, full_name, city, area, role')
+          .in('user_id', missingUserIds) // FIXED: profiles.user_id = auth.users.id = verification_requests.user_id
+          .eq('role', 'institution');
+
+        if (missingProfilesError) {
+          console.error('❌ Error fetching missing profiles:', missingProfilesError);
+          console.log('⚠️ Will try to fetch by profiles.id as fallback...');
+          // Fallback: try fetching by profiles.id (in case user_id doesn't match)
+          const { data: fallbackProfiles, error: fallbackError } = await supabase
+            .from('profiles')
+            .select('id, user_id, full_name, city, area, role')
+            .in('id', missingUserIds)
+            .eq('role', 'institution');
+          
+          if (!fallbackError && fallbackProfiles && fallbackProfiles.length > 0) {
+            console.log(`✅ Found ${fallbackProfiles.length} profiles using fallback (by id)`);
+            missingProfiles = fallbackProfiles;
+            missingProfilesError = null;
+          }
+        }
+        
+        if (!missingProfilesError && missingProfiles && missingProfiles.length > 0) {
+          console.log(`✅ Found ${missingProfiles.length} profiles for verified institutions`);
+          
+          // Create minimal institution_profiles entries from profiles data
+          missingProfiles.forEach(profile => {
+            // Use profiles.user_id (which matches auth.users.id and verification_requests.user_id)
+            const profileUserId = profile.user_id || profile.id; // Prefer user_id, fallback to id
+            if (profileUserId && !addedUserIds.has(profileUserId)) {
+              const minimalInstitution = {
+                id: profile.id || crypto.randomUUID(),
+                user_id: profileUserId, // This matches verification_requests.user_id
+                institution_name: profile.full_name || 'Institution',
+                institution_type: 'Educational Institution',
+                verified: true, // Verified via verification_requests
+                status: 'approved', // Also set status to approved
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                // Add location data from profiles
+                city: profile.city || 'Various Locations',
+                area: profile.area || 'Online & In-Person',
+                state: profile.area || '',
+                description: 'Verified educational institution',
+                // Default values for required fields
+                established_year: new Date().getFullYear(),
+                registration_number: null,
+                student_count: 0
+              };
+              
+              allVerifiedInstitutions.push(minimalInstitution);
+              addedUserIds.add(profileUserId);
+              console.log(`✅ Created minimal institution entry for ${profile.full_name || profileUserId} (user_id: ${profileUserId})`);
+            } else {
+              console.log(`⚠️ Skipping profile ${profile.full_name || profile.id} - already added or missing user_id`);
+            }
+          });
+        } else {
+          console.warn(`⚠️ No profiles found for missing user_ids: ${missingUserIds.join(', ')}`);
+        }
+      }
+
+      console.log('✅ Combined verified institutions count:', allVerifiedInstitutions.length);
+      console.log('✅ Verified institutions:', allVerifiedInstitutions.map(i => i.institution_name || i.user_id));
+      const institutionData = allVerifiedInstitutions;
+
       if (!institutionData || institutionData.length === 0) {
-        console.log('No institution profiles found');
+        console.log('No verified institution profiles found');
         setInstitutions([]);
         return;
       }
 
-      console.log('Found institution profiles:', institutionData.length);
+      console.log('✅ Final institution profiles count:', institutionData.length);
 
-      // Then fetch the corresponding user profiles
-      const userIds = institutionData.map(institution => institution.user_id);
+      // All institutions in institutionData are already verified (from either source)
+      const verifiedInstitutions = institutionData;
+
+      // Fetch the corresponding user profiles (optional - don't fail if some don't exist)
+      const verifiedUserIds = verifiedInstitutions.map(institution => institution.user_id);
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, full_name, city, area')
-        .in('id', userIds);
+        .in('id', verifiedUserIds);
 
       if (profileError) {
-        console.error('Error fetching profiles:', profileError);
-        return;
+        console.warn('⚠️ Error fetching profiles (continuing anyway):', profileError);
+        // Don't return - continue even if profiles fetch fails
       }
 
       // Create a map of user_id to profile data
@@ -77,20 +326,27 @@ export default function Institutions() {
       console.log('Found profiles:', profileData?.length || 0);
 
       // Transform the data to match our interface
-      const transformedInstitutions = institutionData.map(institution => {
+      const transformedInstitutions = verifiedInstitutions.map(institution => {
         const profile = profileMap.get(institution.user_id);
+        
+        // Use location from institution_profiles if profile doesn't have it
+        const city = profile?.city || institution.city || 'Various Locations';
+        const area = profile?.area || institution.area || 'Online & In-Person';
+        
         return {
           ...institution,
+          verified: true, // Ensure verified is set to true for display
           profile: profile || {
-            full_name: 'Partner Institution',
-            city: 'Various Locations',
-            area: 'Online & In-Person'
+            full_name: institution.institution_name || 'Partner Institution',
+            city: city,
+            area: area
           },
           // Extract subjects if available
           subjects: institution.subjects || []
         };
       });
 
+      console.log('✅ Final transformed institutions count:', transformedInstitutions.length);
       setInstitutions(transformedInstitutions);
     } catch (error) {
       console.error('Error fetching institutions:', error);

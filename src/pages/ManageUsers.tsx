@@ -631,24 +631,66 @@ export default function ManageUsers() {
           console.error('❌ Error updating', tableName, ':', roleError);
         }
       } else {
-        // Row doesn't exist - Try to INSERT (might fail due to RLS, but we should try)
+        // Row doesn't exist - Try to INSERT a complete profile entry
         console.log('⚠️', tableName, 'profile not found for', user.user_id, '- attempting to create profile');
         
-        // Try to create a minimal profile entry (RLS might block this, but we should try)
+        // For institutions, fetch basic data from profiles table to create a complete entry
+        let institutionName = user.full_name || 'Institution';
+        let city = null;
+        let area = null;
+        
+        if (user.role === 'institution') {
+          // Fetch institution name and location from profiles table
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('full_name, city, area')
+            .eq('user_id', user.user_id)
+            .maybeSingle();
+          
+          if (!profileError && profileData) {
+            institutionName = profileData.full_name || institutionName;
+            city = profileData.city || null;
+            area = profileData.area || null;
+            console.log(`✅ Fetched profile data for institution: ${institutionName}`);
+          }
+        }
+        
+        // Create a complete profile entry with required fields
+        let insertData: any = {
+          user_id: user.user_id,
+          verified: true,
+          updated_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        };
+        
+        // Add role-specific required fields
+        if (user.role === 'institution') {
+          insertData.institution_name = institutionName;
+          insertData.institution_type = 'Educational Institution';
+          insertData.established_year = new Date().getFullYear();
+          insertData.registration_number = null; // Can be updated later
+          if (city) insertData.city = city;
+          if (area) {
+            insertData.area = area;
+            insertData.state = area; // Fallback for state
+          }
+          insertData.status = 'approved';
+        } else if (user.role === 'tutor') {
+          // For tutors, add minimal required fields
+          insertData.full_name = user.full_name || 'Tutor';
+        }
+        
         const insertResult = await supabase
           .from(tableName)
-          .insert({
-            user_id: user.user_id,
-            verified: true,
-            updated_at: new Date().toISOString()
-          })
+          .insert(insertData)
           .select();
         
         roleUpdateData = insertResult.data;
         roleError = insertResult.error;
         
         if (roleError) {
-          console.warn('⚠️ Cannot create', tableName, 'profile (RLS may prevent INSERT):', roleError.message);
+          console.error('❌ Cannot create', tableName, 'profile:', roleError.message);
+          console.error('❌ Error details:', roleError);
           console.log('ℹ️ Will rely on verification_requests table for verification status');
         } else if (roleUpdateData && roleUpdateData.length > 0) {
           console.log('✅', tableName, 'profile created successfully:', roleUpdateData[0]);
@@ -666,6 +708,53 @@ export default function ManageUsers() {
         .select('id')
         .eq('user_id', user.user_id)
         .maybeSingle();
+      
+      // If verification_requests exists but institution_profiles doesn't (for institutions),
+      // try to create institution_profiles entry again (in case first attempt failed)
+      if (!existingProfile && user.role === 'institution' && verificationRequest) {
+        console.log('⚠️ verification_requests exists but institution_profiles missing - attempting to create again...');
+        // Re-fetch profile data if we haven't already
+        if (!institutionName || institutionName === 'Institution') {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('full_name, city, area')
+            .eq('user_id', user.user_id)
+            .maybeSingle();
+          
+          if (!profileError && profileData) {
+            institutionName = profileData.full_name || institutionName;
+            city = profileData.city || null;
+            area = profileData.area || null;
+          }
+        }
+        
+        // Try to create institution_profiles entry again
+        const retryInsertResult = await supabase
+          .from('institution_profiles')
+          .insert({
+            user_id: user.user_id,
+            institution_name: institutionName,
+            institution_type: 'Educational Institution',
+            established_year: new Date().getFullYear(),
+            registration_number: null,
+            city: city || null,
+            area: area || null,
+            state: area || null,
+            verified: true,
+            status: 'approved',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select();
+        
+        if (!retryInsertResult.error && retryInsertResult.data && retryInsertResult.data.length > 0) {
+          console.log('✅ Successfully created institution_profiles entry on retry:', retryInsertResult.data[0]);
+          roleUpdateData = retryInsertResult.data;
+          roleError = null;
+        } else if (retryInsertResult.error) {
+          console.error('❌ Retry failed to create institution_profiles:', retryInsertResult.error);
+        }
+      }
       
       let verificationRequestUpdateData, verificationRequestUpdateError;
       
