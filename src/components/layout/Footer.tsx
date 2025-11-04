@@ -291,7 +291,7 @@ export function Footer() {
                 </li>
                 <li>
                   <Link 
-                    to="/about" 
+                    to="/about#team" 
                     className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 group"
                   >
                     <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />

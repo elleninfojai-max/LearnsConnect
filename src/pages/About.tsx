@@ -71,13 +71,40 @@ const team = [
   }
 ];
 
+// const teamMembers = [
+//   { name: "Tanmay", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Tanmay&background=0ea5e9&color=fff&size=300" },
+//   { name: "Maseerah", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Maseerah&background=0ea5e9&color=fff&size=300" },
+//   { name: "Naveen", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Naveen&background=0ea5e9&color=fff&size=300" },
+//   { name: "Saravanan", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Saravanan&background=0ea5e9&color=fff&size=300" },
+//   { name: "Syed", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Syed&background=0ea5e9&color=fff&size=300" },
+//   { name: "Nandhini", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Nandhini&background=0ea5e9&color=fff&size=300" },
+//   { name: "Rani", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Rani&background=0ea5e9&color=fff&size=300" },
+//   { name: "Jyoti", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Jyoti&background=0ea5e9&color=fff&size=300" },
+//   { name: "Pradeep", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Pradeep&background=0ea5e9&color=fff&size=300" },
+//   { name: "Jay", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Jay&background=0ea5e9&color=fff&size=300" },
+//   { name: "Sheeba", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Sheeba&background=0ea5e9&color=fff&size=300" },
+//   { name: "Sakthi", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Sakthi&background=0ea5e9&color=fff&size=300" },
+//   { name: "Gokul", designation: "Team Member", image: "https://ui-avatars.com/api/?name=Gokul&background=0ea5e9&color=fff&size=300" }
+// ];
+
 export default function About() {
   const location = useLocation();
 
-  // Scroll to top when navigating to About page
+  // Scroll to top or anchor when navigating to About page
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [location.pathname]);
+    if (location.hash === '#team') {
+      // Wait for page to render, then scroll to team section
+      setTimeout(() => {
+        const teamSection = document.getElementById('team');
+        if (teamSection) {
+          teamSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } else {
+      // Scroll to top if no hash
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [location.pathname, location.hash]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -270,7 +297,7 @@ export default function About() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
             {team.map((member, index) => (
               <Card key={index} className="border-none shadow-soft hover:shadow-medium transition-all duration-300">
                 <CardContent className="p-8 text-center">
@@ -284,6 +311,36 @@ export default function About() {
               </Card>
             ))}
           </div>
+
+          {/* Team Members
+          <div id="team" className="mt-12 scroll-mt-20">
+            <h3 className="text-2xl md:text-3xl font-bold mb-6 text-center">
+              Meet Our Team
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8">
+              {teamMembers.map((member, index) => (
+                <Card key={index} className="border-none shadow-soft hover:shadow-medium transition-all duration-300 text-center group">
+                  <CardContent className="p-6">
+                    <div className="relative mb-4">
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 mx-auto rounded-full overflow-hidden border-4 border-primary/10 group-hover:border-primary/30 transition-all duration-300">
+                        <img 
+                          src={member.image} 
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback to a generic avatar if image fails to load
+                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=0ea5e9&color=fff&size=200`;
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-semibold mb-1">{member.name}</h3>
+                    <p className="text-sm sm:text-base text-primary font-medium">{member.designation}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div> */}
         </div>
       </section>
 

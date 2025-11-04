@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
@@ -108,6 +108,8 @@ export default function ManageUsers() {
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const approvedUsersRef = useRef<Set<string>>(new Set());
+  const rejectedUsersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!isAdminAuthenticated()) {
@@ -149,6 +151,45 @@ export default function ManageUsers() {
 
       // Process each user and fetch their role-specific data
       const processedUsers = await Promise.all((profilesData || []).map(async (user) => {
+        // Check refs for recently approved/rejected users (immediate UI updates - highest priority)
+        const isApprovedInRef = approvedUsersRef.current.has(user.user_id);
+        const isRejectedInRef = rejectedUsersRef.current.has(user.user_id);
+        
+        // Check verification_requests.status (primary source, but only if refs don't have it)
+        const { data: verificationRequest } = await supabase
+          .from('verification_requests')
+          .select('status')
+          .eq('user_id', user.user_id)
+          .maybeSingle();
+        
+        // Determine verification status from verification_requests table
+        let verificationStatusFromRequest: 'pending' | 'approved' | 'rejected' | null = null;
+        if (verificationRequest) {
+          if (verificationRequest.status === 'verified') {
+            verificationStatusFromRequest = 'approved';
+          } else if (verificationRequest.status === 'rejected') {
+            verificationStatusFromRequest = 'rejected';
+          } else {
+            verificationStatusFromRequest = 'pending';
+          }
+        }
+        
+        // Determine initial verification status
+        // Priority: refs > verification_requests > pending (will be overridden by role-specific profile if exists)
+        let initialVerificationStatus: 'pending' | 'approved' | 'rejected';
+        if (isRejectedInRef) {
+          initialVerificationStatus = 'rejected';
+        } else if (isApprovedInRef) {
+          initialVerificationStatus = 'approved';
+        } else if (verificationStatusFromRequest) {
+          initialVerificationStatus = verificationStatusFromRequest;
+        } else {
+          // If no verification_request exists, default to pending (will check role-specific profile later)
+          initialVerificationStatus = 'pending';
+        }
+        
+        console.log('🔍 Base user verification check - user_id:', user.user_id, 'verification_requests.status:', verificationRequest?.status, 'verificationStatusFromRequest:', verificationStatusFromRequest, 'initialStatus:', initialVerificationStatus);
+        
         const baseUser = {
           user_id: user.user_id,
           full_name: user.full_name,
@@ -157,7 +198,7 @@ export default function ManageUsers() {
           phone: user.phone,
           bio: user.bio,
           created_at: user.created_at,
-          verification_status: user.verified ? 'approved' : 'pending', // Use verified field from profiles
+          verification_status: initialVerificationStatus,
           profile_completion: 0, // Will be calculated based on role-specific data
           location: user.city || user.area || 'Not provided', // Use city/area from profiles
           updated_at: user.updated_at
@@ -174,6 +215,8 @@ export default function ManageUsers() {
 
             if (!tutorError && tutorData) {
               console.log('✅ Tutor profile loaded for:', user.full_name);
+              console.log('📊 Tutor verified status from DB:', tutorData.verified, typeof tutorData.verified);
+              console.log('📊 Base user verified status:', baseUser.verification_status);
               
               // Calculate profile completion for tutors based on actual fields
               const tutorFields = [
@@ -183,6 +226,37 @@ export default function ManageUsers() {
               ];
               const completedFields = tutorFields.filter(field => field && field !== '' && field !== '[]').length;
               const profileCompletion = Math.round((completedFields / tutorFields.length) * 100);
+              
+              // Check tutor_profiles.verified as authoritative source for tutors
+              // Ensure verified is treated as boolean (handle both true/false and null/undefined)
+              const verifiedFromTutorProfile = tutorData.verified === true || tutorData.verified === 'true' || tutorData.verified === 1 || tutorData.verified === '1';
+              
+              // Re-check refs (in case they were updated)
+              const isApprovedInRef = approvedUsersRef.current.has(user.user_id);
+              const isRejectedInRef = rejectedUsersRef.current.has(user.user_id);
+              
+              // Determine final verification status with smart priority:
+              // 1. Refs (for immediate UI updates - highest priority)
+              // 2. tutor_profiles.verified (authoritative for tutors)
+              // 3. verification_requests.status (if exists and tutor_profiles doesn't contradict)
+              let finalVerificationStatus: 'pending' | 'approved' | 'rejected';
+              
+              if (isRejectedInRef) {
+                finalVerificationStatus = 'rejected';
+              } else if (isApprovedInRef) {
+                finalVerificationStatus = 'approved';
+              } else if (verifiedFromTutorProfile) {
+                // tutor_profiles.verified = true is authoritative - use this even if verification_requests says pending
+                finalVerificationStatus = 'approved';
+              } else if (baseUser.verification_status === 'rejected') {
+                // If verification_requests says rejected, honor that
+                finalVerificationStatus = 'rejected';
+              } else {
+                // Default to pending if nothing indicates approval
+                finalVerificationStatus = 'pending';
+              }
+              
+              console.log('🔍 Verification check for', user.full_name, '- tutorData.verified:', tutorData.verified, 'verifiedFromTutorProfile:', verifiedFromTutorProfile, 'baseStatus:', baseUser.verification_status, 'finalStatus:', finalVerificationStatus);
               
               return {
                 ...baseUser,
@@ -197,10 +271,23 @@ export default function ManageUsers() {
                 rating: tutorData.rating,
                 reviews_count: 0, // Not available in current schema
                 profile_completion: profileCompletion,
-                verification_status: tutorData.verified ? 'approved' : 'pending'
+                verification_status: finalVerificationStatus
               };
             } else {
               console.log('⚠️ No tutor profile found for:', user.full_name, tutorError);
+              // If tutor profile not found, check if user is recently approved/rejected via refs
+              // Otherwise, check profiles.verified as fallback since that's also updated during approval
+              if (rejectedUsersRef.current.has(user.user_id)) {
+                console.log('🔍 Using ref-based rejected status for tutor without profile');
+                return { ...baseUser, verification_status: 'rejected' as const };
+              }
+              if (approvedUsersRef.current.has(user.user_id)) {
+                console.log('🔍 Using ref-based approved status for tutor without profile');
+                return { ...baseUser, verification_status: 'approved' as const };
+              }
+              // If no ref and no tutor profile, use baseUser status (from verification_requests)
+              console.log('🔍 Using baseUser status (from verification_requests) for tutor without profile:', baseUser.verification_status);
+              return baseUser;
             }
           }
 
@@ -223,6 +310,37 @@ export default function ManageUsers() {
               const completedFields = institutionFields.filter(field => field && field !== '' && field !== '[]').length;
               const profileCompletion = Math.round((completedFields / institutionFields.length) * 100);
               
+              // Check institution_profiles.verified as authoritative source for institutions
+              // Ensure verified is treated as boolean (handle both true/false and null/undefined)
+              const verifiedFromInstitutionProfile = institutionData.verified === true || institutionData.verified === 'true' || institutionData.verified === 1 || institutionData.verified === '1';
+              
+              // Re-check refs (in case they were updated)
+              const isApprovedInRef = approvedUsersRef.current.has(user.user_id);
+              const isRejectedInRef = rejectedUsersRef.current.has(user.user_id);
+              
+              // Determine final verification status with smart priority:
+              // 1. Refs (for immediate UI updates - highest priority)
+              // 2. institution_profiles.verified (authoritative for institutions)
+              // 3. verification_requests.status (if exists and institution_profiles doesn't contradict)
+              let finalVerificationStatus: 'pending' | 'approved' | 'rejected';
+              
+              if (isRejectedInRef) {
+                finalVerificationStatus = 'rejected';
+              } else if (isApprovedInRef) {
+                finalVerificationStatus = 'approved';
+              } else if (verifiedFromInstitutionProfile) {
+                // institution_profiles.verified = true is authoritative - use this even if verification_requests says pending
+                finalVerificationStatus = 'approved';
+              } else if (baseUser.verification_status === 'rejected') {
+                // If verification_requests says rejected, honor that
+                finalVerificationStatus = 'rejected';
+              } else {
+                // Default to pending if nothing indicates approval
+                finalVerificationStatus = 'pending';
+              }
+              
+              console.log('🔍 Verification check for', user.full_name, '- institutionData.verified:', institutionData.verified, 'verifiedFromInstitutionProfile:', verifiedFromInstitutionProfile, 'baseStatus:', baseUser.verification_status, 'finalStatus:', finalVerificationStatus);
+              
               return {
                 ...baseUser,
                 experience: institutionData.established_year ? `Established in ${institutionData.established_year}` : 'Not specified',
@@ -232,7 +350,7 @@ export default function ManageUsers() {
                 rating: 0, // Not available in current schema
                 reviews_count: 0, // Not available in current schema
                 profile_completion: profileCompletion,
-                verification_status: institutionData.verified ? 'approved' : 'pending',
+                verification_status: finalVerificationStatus,
                 // Additional institution-specific fields
                 institution_name: institutionData.institution_name,
                 institution_type: institutionData.institution_type,
@@ -245,6 +363,19 @@ export default function ManageUsers() {
               };
             } else {
               console.log('⚠️ No institution profile found for:', user.full_name, institutionError);
+              // If institution profile not found, check if user is recently approved/rejected via refs
+              // Otherwise, check profiles.verified as fallback since that's also updated during approval
+              if (rejectedUsersRef.current.has(user.user_id)) {
+                console.log('🔍 Using ref-based rejected status for institution without profile');
+                return { ...baseUser, verification_status: 'rejected' as const };
+              }
+              if (approvedUsersRef.current.has(user.user_id)) {
+                console.log('🔍 Using ref-based approved status for institution without profile');
+                return { ...baseUser, verification_status: 'approved' as const };
+              }
+              // If no ref and no institution profile, use baseUser status (from verification_requests)
+              console.log('🔍 Using baseUser status (from verification_requests) for institution without profile:', baseUser.verification_status);
+              return baseUser;
             }
           }
 
@@ -299,8 +430,88 @@ export default function ManageUsers() {
         return baseUser;
       }));
 
-      setUsers(processedUsers);
-      console.log('✅ All users processed:', processedUsers.length);
+      // Ensure recently approved/rejected users maintain their status even after reload
+      // Also double-check the database values for tutors/institutions to ensure consistency
+      const finalProcessedUsers = await Promise.all(processedUsers.map(async (user) => {
+        if (user.role === 'tutor' || user.role === 'institution') {
+          // First, check refs (for recently approved/rejected users in current session)
+          if (rejectedUsersRef.current.has(user.user_id)) {
+            return { ...user, verification_status: 'rejected' as const };
+          }
+          if (approvedUsersRef.current.has(user.user_id)) {
+            return { ...user, verification_status: 'approved' as const };
+          }
+          
+          // If not in refs (e.g., after logout/login), verify against database directly
+          // This ensures we read the latest database state
+          // Check both role-specific profile AND profiles table
+          const tableName = user.role === 'tutor' ? 'tutor_profiles' : 'institution_profiles';
+          try {
+            // First check role-specific profile
+            const { data: roleData, error: roleError } = await supabase
+              .from(tableName)
+              .select('verified')
+              .eq('user_id', user.user_id)
+              .maybeSingle();
+            
+            // Check both verification_requests and role-specific profile
+            // Priority: role-specific profile.verified > verification_requests.status
+            const { data: verificationRequestData } = await supabase
+              .from('verification_requests')
+              .select('status')
+              .eq('user_id', user.user_id)
+              .maybeSingle();
+            
+            let verifiedFromRoleProfile = false;
+            let statusFromVerificationRequest: 'pending' | 'approved' | 'rejected' | null = null;
+            
+            // Check role-specific profile first (most authoritative)
+            if (!roleError && roleData) {
+              verifiedFromRoleProfile = roleData.verified === true || roleData.verified === 'true' || roleData.verified === 1 || roleData.verified === '1';
+              console.log('🔍 Final check - roleData.verified:', roleData.verified, 'verifiedFromRoleProfile:', verifiedFromRoleProfile);
+            }
+            
+            // Check verification_requests as secondary source
+            if (verificationRequestData) {
+              if (verificationRequestData.status === 'verified') {
+                statusFromVerificationRequest = 'approved';
+              } else if (verificationRequestData.status === 'rejected') {
+                statusFromVerificationRequest = 'rejected';
+              } else {
+                statusFromVerificationRequest = 'pending';
+              }
+              console.log('🔍 Final check - verification_requests.status:', verificationRequestData.status, 'statusFromRequest:', statusFromVerificationRequest);
+            }
+            
+            console.log('🔍 Final verification check for', user.full_name, '- verifiedFromRoleProfile:', verifiedFromRoleProfile, 'statusFromRequest:', statusFromVerificationRequest, 'current status:', user.verification_status);
+            
+            // Priority: role-specific profile.verified > verification_requests.status
+            // If role profile says verified, use that (even if verification_requests says pending)
+            if (verifiedFromRoleProfile && user.verification_status === 'pending') {
+              console.log('✅ Correcting status from pending to approved for', user.full_name, '- role profile confirms verified: true');
+              return { ...user, verification_status: 'approved' as const };
+            }
+            
+            // If verification_requests says verified but user status is pending (and role profile doesn't contradict)
+            if (statusFromVerificationRequest === 'approved' && user.verification_status === 'pending' && !verifiedFromRoleProfile) {
+              console.log('✅ Correcting status from pending to approved for', user.full_name, '- verification_requests confirms verified');
+              return { ...user, verification_status: 'approved' as const };
+            }
+            
+            // If verification_requests says rejected but user status is not rejected, update it
+            if (statusFromVerificationRequest === 'rejected' && user.verification_status !== 'rejected') {
+              console.log('✅ Correcting status to rejected for', user.full_name, '- verification_requests confirms rejected');
+              return { ...user, verification_status: 'rejected' as const };
+            }
+          } catch (verifyError) {
+            console.warn('⚠️ Error verifying status for', user.full_name, ':', verifyError);
+          }
+        }
+        return user;
+      }));
+
+      setUsers(finalProcessedUsers);
+      console.log('✅ All users processed:', finalProcessedUsers.length);
 
     } catch (error) {
       console.error('❌ Error loading users:', error);
@@ -388,24 +599,162 @@ export default function ManageUsers() {
       }
 
       // Update the role-specific profile table
+      // IMPORTANT: Only UPDATE existing rows, never INSERT/UPSERT (RLS policies block INSERT)
       const tableName = user.role === 'tutor' ? 'tutor_profiles' : 'institution_profiles';
-      const { error } = await supabase
+      
+      // First, check if the row exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from(tableName)
+        .select('user_id, verified')
+        .eq('user_id', user.user_id)
+        .maybeSingle();
+      
+      console.log('🔍 Checking for existing', tableName, 'profile for', user.user_id, ':', existingProfile ? 'exists' : 'not found');
+      
+      let roleUpdateData, roleError;
+      
+      if (existingProfile) {
+        // Row exists, use update (RLS allows UPDATE)
+        console.log('✅', tableName, 'profile exists - updating verified status');
+        const result = await supabase
         .from(tableName)
         .update({ 
           verified: true,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', user.user_id);
+          .eq('user_id', user.user_id)
+          .select();
+        roleUpdateData = result.data;
+        roleError = result.error;
+        
+        if (roleError) {
+          console.error('❌ Error updating', tableName, ':', roleError);
+        }
+      } else {
+        // Row doesn't exist - Try to INSERT (might fail due to RLS, but we should try)
+        console.log('⚠️', tableName, 'profile not found for', user.user_id, '- attempting to create profile');
+        
+        // Try to create a minimal profile entry (RLS might block this, but we should try)
+        const insertResult = await supabase
+          .from(tableName)
+          .insert({
+            user_id: user.user_id,
+            verified: true,
+            updated_at: new Date().toISOString()
+          })
+          .select();
+        
+        roleUpdateData = insertResult.data;
+        roleError = insertResult.error;
+        
+        if (roleError) {
+          console.warn('⚠️ Cannot create', tableName, 'profile (RLS may prevent INSERT):', roleError.message);
+          console.log('ℹ️ Will rely on verification_requests table for verification status');
+        } else if (roleUpdateData && roleUpdateData.length > 0) {
+          console.log('✅', tableName, 'profile created successfully:', roleUpdateData[0]);
+        }
+      }
 
-      if (error) {
-        console.error('Error approving user:', error);
+      // Update or CREATE verification_requests table (this is the primary source of verification status)
+      // Get current admin user ID for verified_by field
+      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      const adminUserId = adminUser?.id;
+      
+      // Find the verification request for this user
+      const { data: verificationRequest, error: verificationRequestCheckError } = await supabase
+        .from('verification_requests')
+        .select('id')
+        .eq('user_id', user.user_id)
+        .maybeSingle();
+      
+      let verificationRequestUpdateData, verificationRequestUpdateError;
+      
+      if (verificationRequest) {
+        // Update existing verification request
+        console.log('✅ Found verification request - updating status to verified');
+        const result = await supabase
+          .from('verification_requests')
+          .update({
+            status: 'verified',
+            verified_by: adminUserId,
+            verified_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', verificationRequest.id)
+          .select();
+        verificationRequestUpdateData = result.data;
+        verificationRequestUpdateError = result.error;
+        
+        if (verificationRequestUpdateError) {
+          console.error('❌ Error updating verification_requests:', verificationRequestUpdateError);
+        } else if (verificationRequestUpdateData && verificationRequestUpdateData.length > 0) {
+          console.log('✅ Verification request updated successfully:', verificationRequestUpdateData[0]);
+        }
+      } else {
+        // CREATE verification request if it doesn't exist (CRITICAL for persistence)
+        console.log('⚠️ No verification request found for user - creating new verification request');
+        const userType = user.role === 'tutor' ? 'tutor' : 'institute';
+        const insertResult = await supabase
+          .from('verification_requests')
+          .insert({
+            user_id: user.user_id,
+            user_type: userType,
+            status: 'verified',
+            verified_by: adminUserId,
+            verified_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select();
+        
+        verificationRequestUpdateData = insertResult.data;
+        verificationRequestUpdateError = insertResult.error;
+        
+        if (verificationRequestUpdateError) {
+          console.error('❌ Error creating verification_requests:', verificationRequestUpdateError);
+        } else if (verificationRequestUpdateData && verificationRequestUpdateData.length > 0) {
+          console.log('✅ Verification request created successfully:', verificationRequestUpdateData[0]);
+        }
+      }
+
+      // Check for errors - at least ONE update must succeed for persistence
+      const hasSuccessfulUpdate = 
+        (roleUpdateData && roleUpdateData.length > 0) || 
+        (verificationRequestUpdateData && verificationRequestUpdateData.length > 0);
+      
+      if (!hasSuccessfulUpdate) {
+        // Both updates failed - this is a critical error
+        console.error('❌ CRITICAL: Both role table and verification_requests updates failed!');
+        console.error('❌ Role error:', roleError?.message);
+        console.error('❌ Verification request error:', verificationRequestUpdateError?.message);
         toast({
           title: "Error",
-          description: "Failed to approve user",
+          description: "Failed to update verification status. Please try again or contact support.",
           variant: "destructive",
         });
         return;
       }
+      
+      // Log successful updates
+      if (roleUpdateData && roleUpdateData.length > 0) {
+        console.log('✅ Role table updated successfully:', roleUpdateData[0]);
+        console.log('✅ Verified status in role table:', roleUpdateData[0].verified);
+      }
+      
+      if (verificationRequestUpdateData && verificationRequestUpdateData.length > 0) {
+        console.log('✅ Verification request updated/created successfully:', verificationRequestUpdateData[0]);
+        console.log('✅ Status in verification_requests:', verificationRequestUpdateData[0].status);
+      }
+      
+      // Log warnings for partial failures (non-critical if at least one succeeded)
+      if (roleError && !verificationRequestUpdateData) {
+        console.warn('⚠️ Role table update failed:', roleError.message);
+      }
+      
+      if (verificationRequestUpdateError && !roleUpdateData) {
+        console.warn('⚠️ Verification request update failed:', verificationRequestUpdateError.message);
+      }
+
 
       toast({
         title: "User Approved",
@@ -413,7 +762,30 @@ export default function ManageUsers() {
       });
       setShowApproveDialog(false);
       setSelectedUser(null);
-      loadUsers(); // Reload users to reflect changes
+      
+      // Track this user as recently approved to preserve status during reload
+      approvedUsersRef.current.add(user.user_id);
+      // Remove from rejected ref if it was there
+      rejectedUsersRef.current.delete(user.user_id);
+
+      console.log('✅ User approved:', user.user_id, user.full_name);
+      console.log('✅ Approved users ref:', Array.from(approvedUsersRef.current));
+
+      // Immediately update local state to reflect approval - this will hide the button instantly
+      // Only update users state; filteredUsers will be updated by useEffect
+      setUsers(prevUsers => {
+        const updated = prevUsers.map(u => 
+          u.user_id === user.user_id 
+            ? { ...u, verification_status: 'approved' as const }
+            : u
+        );
+        console.log('✅ Updated users state - User status:', updated.find(u => u.user_id === user.user_id)?.verification_status);
+        return updated;
+      });
+      
+      // Don't auto-reload - the state update is immediate and the final verification check
+      // will handle any inconsistencies when the user manually refreshes or navigates
+      // This prevents the page from refreshing automatically and provides better UX
     } catch (error) {
       console.error('Error approving user:', error);
       toast({
@@ -436,25 +808,154 @@ export default function ManageUsers() {
         return;
       }
 
-      // Update the role-specific profile table
+      // Update the role-specific profile table (if it exists)
       const tableName = user.role === 'tutor' ? 'tutor_profiles' : 'institution_profiles';
-      const { error } = await supabase
+      
+      // Check if role-specific profile exists
+      const { data: existingProfile } = await supabase
+        .from(tableName)
+        .select('user_id')
+        .eq('user_id', user.user_id)
+        .maybeSingle();
+      
+      let roleUpdateData, roleError;
+      
+      if (existingProfile) {
+        // Row exists, use update
+        const result = await supabase
         .from(tableName)
         .update({ 
           verified: false,
-          status: 'rejected',
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.user_id);
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.user_id)
+          .select();
+        roleUpdateData = result.data;
+        roleError = result.error;
+        
+        if (roleError) {
+          console.error('❌ Error updating', tableName, ':', roleError);
+        }
+      } else {
+        // Row doesn't exist - Try to INSERT (might fail due to RLS, but we should try)
+        console.log('⚠️', tableName, 'profile not found for', user.user_id, '- attempting to create profile');
+        
+        // Try to create a minimal profile entry (RLS might block this, but we should try)
+        const insertResult = await supabase
+          .from(tableName)
+          .insert({
+            user_id: user.user_id,
+            verified: false,
+            updated_at: new Date().toISOString()
+          })
+          .select();
+        
+        roleUpdateData = insertResult.data;
+        roleError = insertResult.error;
+        
+        if (roleError) {
+          console.warn('⚠️ Cannot create', tableName, 'profile (RLS may prevent INSERT):', roleError.message);
+          console.log('ℹ️ Will rely on verification_requests table for verification status');
+        } else if (roleUpdateData && roleUpdateData.length > 0) {
+          console.log('✅', tableName, 'profile created successfully:', roleUpdateData[0]);
+        }
+      }
 
-      if (error) {
-        console.error('Error rejecting user:', error);
+      // Update or CREATE verification_requests table (this is the primary source of verification status)
+      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      const adminUserId = adminUser?.id;
+      
+      // Find the verification request for this user
+      const { data: verificationRequest } = await supabase
+        .from('verification_requests')
+        .select('id')
+        .eq('user_id', user.user_id)
+        .maybeSingle();
+      
+      let verificationRequestUpdateData, verificationRequestUpdateError;
+      
+      if (verificationRequest) {
+        // Update existing verification request
+        console.log('✅ Found verification request - updating status to rejected');
+        const result = await supabase
+          .from('verification_requests')
+          .update({
+            status: 'rejected',
+            rejection_reason: 'Rejected by admin',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', verificationRequest.id)
+          .select();
+        verificationRequestUpdateData = result.data;
+        verificationRequestUpdateError = result.error;
+        
+        if (verificationRequestUpdateError) {
+          console.error('❌ Error updating verification_requests:', verificationRequestUpdateError);
+        } else if (verificationRequestUpdateData && verificationRequestUpdateData.length > 0) {
+          console.log('✅ Verification request updated successfully:', verificationRequestUpdateData[0]);
+        }
+      } else {
+        // CREATE verification request if it doesn't exist (CRITICAL for persistence)
+        console.log('⚠️ No verification request found for user - creating new verification request');
+        const userType = user.role === 'tutor' ? 'tutor' : 'institute';
+        const insertResult = await supabase
+          .from('verification_requests')
+          .insert({
+            user_id: user.user_id,
+            user_type: userType,
+            status: 'rejected',
+            rejection_reason: 'Rejected by admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select();
+        
+        verificationRequestUpdateData = insertResult.data;
+        verificationRequestUpdateError = insertResult.error;
+        
+        if (verificationRequestUpdateError) {
+          console.error('❌ Error creating verification_requests:', verificationRequestUpdateError);
+        } else if (verificationRequestUpdateData && verificationRequestUpdateData.length > 0) {
+          console.log('✅ Verification request created successfully:', verificationRequestUpdateData[0]);
+        }
+      }
+
+      // Check for errors - at least ONE update must succeed for persistence
+      const hasSuccessfulUpdate = 
+        (roleUpdateData && roleUpdateData.length > 0) || 
+        (verificationRequestUpdateData && verificationRequestUpdateData.length > 0);
+      
+      if (!hasSuccessfulUpdate) {
+        // Both updates failed - this is a critical error
+        console.error('❌ CRITICAL: Both role table and verification_requests updates failed!');
+        console.error('❌ Role error:', roleError?.message);
+        console.error('❌ Verification request error:', verificationRequestUpdateError?.message);
         toast({
           title: "Error",
-          description: "Failed to reject user",
+          description: "Failed to update verification status. Please try again or contact support.",
           variant: "destructive",
         });
         return;
+      }
+      
+      // Log successful updates
+      if (roleUpdateData && roleUpdateData.length > 0) {
+        console.log('✅ Role table updated successfully (rejected):', roleUpdateData[0]);
+        console.log('✅ Verified status in role table:', roleUpdateData[0].verified);
+      }
+      
+      if (verificationRequestUpdateData && verificationRequestUpdateData.length > 0) {
+        console.log('✅ Verification request updated/created successfully:', verificationRequestUpdateData[0]);
+        console.log('✅ Status in verification_requests:', verificationRequestUpdateData[0].status);
+      }
+      
+      // Log warnings for partial failures (non-critical if at least one succeeded)
+      if (roleError && !verificationRequestUpdateData) {
+        console.warn('⚠️ Role table update failed:', roleError.message);
+      }
+      
+      if (verificationRequestUpdateError && !roleUpdateData) {
+        console.warn('⚠️ Verification request update failed:', verificationRequestUpdateError.message);
       }
 
       toast({
@@ -463,7 +964,30 @@ export default function ManageUsers() {
       });
       setShowRejectDialog(false);
       setSelectedUser(null);
-      loadUsers(); // Reload users to reflect changes
+      
+      // Track this user as recently rejected to preserve status during reload
+      rejectedUsersRef.current.add(user.user_id);
+      // Remove from approved ref if it was there
+      approvedUsersRef.current.delete(user.user_id);
+
+      console.log('❌ User rejected:', user.user_id, user.full_name);
+      console.log('❌ Rejected users ref:', Array.from(rejectedUsersRef.current));
+
+      // Immediately update local state to reflect rejection - this will hide the button instantly
+      // Only update users state; filteredUsers will be updated by useEffect
+      setUsers(prevUsers => {
+        const updated = prevUsers.map(u => 
+          u.user_id === user.user_id 
+            ? { ...u, verification_status: 'rejected' as const }
+            : u
+        );
+        console.log('❌ Updated users state - User status:', updated.find(u => u.user_id === user.user_id)?.verification_status);
+        return updated;
+      });
+      
+      // Don't auto-reload - the state update is immediate and the final verification check
+      // will handle any inconsistencies when the user manually refreshes or navigates
+      // This prevents the page from refreshing automatically and provides better UX
     } catch (error) {
       console.error('Error rejecting user:', error);
       toast({
@@ -658,6 +1182,20 @@ export default function ManageUsers() {
                       </Button>
                     </>
                   )}
+                  {(user.verification_status === 'approved' || user.verification_status === 'verified') && (user.role === 'tutor' || user.role === 'institution') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedUser(user);
+                        setShowDeleteDialog(true);
+                    }}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                  </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -669,18 +1207,6 @@ export default function ManageUsers() {
                   >
                     <UserX className="h-4 w-4 mr-1" />
                     Suspend
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedUser(user);
-                      setShowDeleteDialog(true);
-                    }}
-                    className="text-red-600 border-red-200 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
                   </Button>
                 </div>
               </td>
