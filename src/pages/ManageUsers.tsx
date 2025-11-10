@@ -969,10 +969,10 @@ export default function ManageUsers() {
         const result = await supabase
           .from('verification_requests')
           .update({
-            status: 'rejected',
+          status: 'rejected',
             rejection_reason: 'Rejected by admin',
-            updated_at: new Date().toISOString()
-          })
+          updated_at: new Date().toISOString()
+        })
           .eq('id', verificationRequest.id)
           .select();
         verificationRequestUpdateData = result.data;
