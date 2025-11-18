@@ -4,11 +4,12 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Eye, Lock, Users, Globe, Mail, Phone, Calendar } from 'lucide-react';
+import { Shield, Eye, Lock, Users, Globe, Mail, Phone, Calendar, Building2, UserCheck, CreditCard, DollarSign, RefreshCw, FileCheck, AlertTriangle, Scale, BookOpen, MapPin, Banknote } from 'lucide-react';
 
 export default function PrivacyPolicy() {
   const location = useLocation();
-  const lastUpdated = "January 1, 2025";
+  const lastUpdated = "November 1, 2025";
+  const nextReview = "February 1, 2026";
 
   // Scroll to top when navigating to Privacy Policy page
   useEffect(() => {
@@ -26,20 +27,29 @@ export default function PrivacyPolicy() {
             <div className="flex items-center justify-center gap-2 mb-4">
               <Shield className="h-8 w-8 text-primary" />
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-                Privacy Policy
+                Terms, Privacy & Payout Policy
               </h1>
             </div>
             <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Your privacy is important to us. Learn how we collect, use, and protect your personal information.
+              Comprehensive policy covering terms of service, privacy practices, and payout guidelines for LearnsConnect platform.
             </p>
-            <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>Last Updated: {lastUpdated}</span>
+                <span>Effective Date: {lastUpdated}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                <span>Next Review: {nextReview}</span>
               </div>
               <Badge variant="outline" className="text-xs">
                 Version 1.0
               </Badge>
+            </div>
+            <div className="mt-4 text-sm text-muted-foreground">
+              <p><strong>Brand:</strong> LearnsConnect</p>
+              <p><strong>Company:</strong> Ellen Information Technology Solutions Pvt. Ltd.</p>
+              <p><strong>CIN / GST:</strong> 33AAHCE0984H1ZN</p>
             </div>
           </div>
         </div>
@@ -50,24 +60,308 @@ export default function PrivacyPolicy() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto space-y-8">
             
-            {/* Introduction */}
+            {/* About LearnsConnect */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Building2 className="h-6 w-6 text-primary" />
+                  1. About LearnsConnect
+                </h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  LearnsConnect, operated by Ellen Information Technology Solutions Pvt. Ltd., is an online education aggregator 
+                  connecting students with verified tutors and institutions across India.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mt-4">
+                  The platform provides secure fee collection, tutor/institution management tools, and automated payouts through 
+                  RBL Bank and RazorpayX.
+                </p>
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-semibold mb-2">Registered Address:</p>
+                  <p className="text-sm text-muted-foreground">
+                    8/3, Athreyapuram 2nd Street, Choolaimedu, Chennai – 600094
+                  </p>
+                  <p className="text-sm font-semibold mt-3 mb-2">Banking Partner:</p>
+                  <p className="text-sm text-muted-foreground">
+                    RBL Bank Ltd., Velachery Branch, Chennai<br />
+                    Account No.: 409002496031 | IFSC: RATN0000350
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* User Categories */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Users className="h-6 w-6 text-primary" />
+                  2. User Categories
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <h3 className="font-semibold mb-2">1. Students</h3>
+                    <p className="text-sm text-muted-foreground">Learners enrolling for educational or skill programs.</p>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <h3 className="font-semibold mb-2">2. Tutors</h3>
+                    <p className="text-sm text-muted-foreground">Verified professionals providing instructional services.</p>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <h3 className="font-semibold mb-2">3. Institutions</h3>
+                    <p className="text-sm text-muted-foreground">Recognized academic or training organizations.</p>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <h3 className="font-semibold mb-2">4. Company (Admin)</h3>
+                    <p className="text-sm text-muted-foreground">LearnsConnect management overseeing operations, verification, and payouts.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Registration & Account Creation */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <UserCheck className="h-6 w-6 text-primary" />
+                  3. Registration & Account Creation
+                </h2>
+                <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
+                  <li>Users must register with accurate contact details and consent to KYC verification.</li>
+                  <li>Tutors/institutions must upload valid Aadhaar, PAN, GST, or business proof.</li>
+                  <li>LearnsConnect may suspend or reject any account failing compliance or misusing the platform.</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Lead Monetization & Access */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <DollarSign className="h-6 w-6 text-primary" />
+                  4. Lead Monetization & Access
+                </h2>
+                <div className="space-y-3">
+                  <p className="text-muted-foreground">• First 10 leads free.</p>
+                  <p className="text-muted-foreground">• After that: Tutors – ₹9/lead | Institutions – ₹19/lead.</p>
+                  <p className="text-muted-foreground">• Leads are verified student inquiries visible on the LearnsConnect dashboard.</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Collection Methods */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <CreditCard className="h-6 w-6 text-primary" />
+                  5. Payment Collection Methods
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Option A – Direct Payment</h3>
+                    <p className="text-muted-foreground">
+                      Student pays the tutor/institution directly; LearnsConnect records the lead only.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Option B – Via LearnsConnect Payment System</h3>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1 ml-4">
+                      <li>Fees collected through RBL Bank UPI/VPA or RazorpayX.</li>
+                      <li>Instant confirmation sent to both student and tutor/institution.</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Zero-Commission & Fast-Payout Offer */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Banknote className="h-6 w-6 text-primary" />
+                  6. Zero-Commission & Fast-Payout Offer (Nov–Dec 2025)
+                </h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-border mt-4">
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="border border-border p-3 text-left font-semibold">Item</th>
+                        <th className="border border-border p-3 text-left font-semibold">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">Duration</td>
+                        <td className="border border-border p-3 text-muted-foreground">1 Nov – 31 Dec 2025</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">Commission</td>
+                        <td className="border border-border p-3 text-muted-foreground">0% on all payments processed via LearnsConnect</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">Payout Window</td>
+                        <td className="border border-border p-3 text-muted-foreground">2 – 4 hours from verified transaction</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">Eligible Modes</td>
+                        <td className="border border-border p-3 text-muted-foreground">UPI / VPA, RazorpayX, NEFT / IMPS via RBL</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">Working Hours</td>
+                        <td className="border border-border p-3 text-muted-foreground">9 a.m.–9 p.m. (7 days a week); post-9 p.m. settles next working day</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">Verification</td>
+                        <td className="border border-border p-3 text-muted-foreground">Valid UPI reference or invoice via CRM required</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">Post-Period</td>
+                        <td className="border border-border p-3 text-muted-foreground">From 1 Jan 2026 → 1% service commission applies</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payout Policy */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Banknote className="h-6 w-6 text-primary" />
+                  7. Payout Policy (RBL Bank Guidelines)
+                </h2>
+                <div className="overflow-x-auto mt-4">
+                  <table className="w-full border-collapse border border-border">
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="border border-border p-3 text-left font-semibold">Mode</th>
+                        <th className="border border-border p-3 text-left font-semibold">Availability</th>
+                        <th className="border border-border p-3 text-left font-semibold">Payout Timeline</th>
+                        <th className="border border-border p-3 text-left font-semibold">Purpose</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">IMPS / UPI</td>
+                        <td className="border border-border p-3 text-muted-foreground">24 × 7 (₹5 L per txn)</td>
+                        <td className="border border-border p-3 text-muted-foreground">Instant</td>
+                        <td className="border border-border p-3 text-muted-foreground">Urgent small payouts</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">NEFT</td>
+                        <td className="border border-border p-3 text-muted-foreground">24 × 7 (₹5 L limit after 6:45 p.m.)</td>
+                        <td className="border border-border p-3 text-muted-foreground">30 min – 2 hrs</td>
+                        <td className="border border-border p-3 text-muted-foreground">Standard payouts</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">RTGS</td>
+                        <td className="border border-border p-3 text-muted-foreground">24 × 7 (₹10 L limit after 7 p.m.)</td>
+                        <td className="border border-border p-3 text-muted-foreground">Real-time</td>
+                        <td className="border border-border p-3 text-muted-foreground">High-value settlements</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-border p-3 font-medium">Bulk API / Upload</td>
+                        <td className="border border-border p-3 text-muted-foreground">9 a.m.–7 p.m.</td>
+                        <td className="border border-border p-3 text-muted-foreground">Same day</td>
+                        <td className="border border-border p-3 text-muted-foreground">Batch settlements</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-yellow-800 text-sm font-semibold mb-2">Notes:</p>
+                  <ul className="list-disc list-inside text-yellow-700 text-sm space-y-1 ml-4">
+                    <li>Transactions after 7 p.m. / holidays observe RBL's reduced limits.</li>
+                    <li>Credits rely only on account number (per RBI guidelines).</li>
+                    <li>All transactions logged per RBL API Banking Checklist & RBI Settlement Rules.</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Refund & Cancellation */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <RefreshCw className="h-6 w-6 text-primary" />
+                  8. Refund & Cancellation
+                </h2>
+                <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
+                  <li>Refunds only for duplicate or failed transactions verified by the bank.</li>
+                  <li>Course cancellations within 24 hrs → refund subject to tutor approval.</li>
+                  <li>Refunds processed via original mode within 5–7 business days.</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* KYC & Anti-Fraud Compliance */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <FileCheck className="h-6 w-6 text-primary" />
+                  9. KYC & Anti-Fraud Compliance
+                </h2>
+                <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
+                  <li>Tutor/institution verification includes Aadhaar, GMB, and Meta Business checks.</li>
+                  <li>Students verified through OTP / mobile authentication.</li>
+                  <li>Automated systems flag duplicates or suspicious UPI patterns.</li>
+                  <li>LearnsConnect follows RBI KYC Master Direction (2016) and RBL Due-Diligence Policy.</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Data Privacy & Security Summary */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Lock className="h-6 w-6 text-primary" />
+                  10. Data Privacy & Security (Summary)
+                </h2>
+                <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
+                  <li><strong>Encryption:</strong> AES-256 for all sensitive data.</li>
+                  <li><strong>Payments:</strong> Handled by PCI-DSS certified partners (RBL Bank & Razorpay).</li>
+                  <li><strong>Data Storage:</strong> No storage or resale of personal banking data.</li>
+                  <li><strong>Retention:</strong> Data retained 5 years per RBI and IT Act.</li>
+                  <li><strong>User Rights:</strong> Users may request correction or deletion via support@learnsconnect.com.</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Confidentiality */}
             <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
               <CardContent className="p-6 sm:p-8">
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
                   <Eye className="h-6 w-6 text-primary" />
-                  Introduction
+                  11. Confidentiality
                 </h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Ellen Information Technology Solutions Pvt. Ltd. ("we," "our," or "us") operates the LearnsConnect platform 
-                  ("Service"). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when 
-                  you use our educational platform that connects students with tutors and institutions.
-                </p>
-                <p className="text-muted-foreground leading-relaxed mt-4">
-                  By using our Service, you agree to the collection and use of information in accordance with this policy. 
-                  If you do not agree with our policies and practices, please do not use our Service.
+                  User information—including tutor payout details, student contact data, and session records—is used only for 
+                  legitimate operational purposes within LearnsConnect and never shared for marketing without consent.
                 </p>
               </CardContent>
             </Card>
+
+            {/* Privacy Policy Details */}
+            <div className="space-y-8">
+              <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+                <CardContent className="p-6 sm:p-8">
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <Shield className="h-6 w-6 text-primary" />
+                    12. Privacy Policy Details
+                  </h2>
+                  <p className="text-muted-foreground leading-relaxed mb-4">
+                    (This section preserves your complete original Privacy Policy content.)
+                  </p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Ellen Information Technology Solutions Pvt. Ltd. ("we," "our," or "us") operates the LearnsConnect platform ("Service").
+                    This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our educational 
+                    platform that connects students with tutors and institutions.
+                  </p>
+                  <p className="text-muted-foreground leading-relaxed mt-4">
+                    By using our Service, you agree to the collection and use of information in accordance with this policy. 
+                    If you do not agree with our policies and practices, please do not use our Service.
+                  </p>
+                </CardContent>
+              </Card>
 
             {/* Information We Collect */}
             <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
@@ -385,51 +679,89 @@ export default function PrivacyPolicy() {
                 </p>
               </CardContent>
             </Card>
+            </div>
+
+            {/* Liability Disclaimer */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <AlertTriangle className="h-6 w-6 text-primary" />
+                  13. Liability Disclaimer
+                </h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  LearnsConnect acts solely as a digital intermediary. It is not liable for tutor quality, learning outcomes, 
+                  or third-party service delays. Liability is limited to verified payment errors or technical faults directly 
+                  caused by the platform.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Dispute Resolution */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Scale className="h-6 w-6 text-primary" />
+                  14. Dispute Resolution
+                </h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  Disputes handled under the Arbitration & Conciliation Act (1996); Chennai courts have exclusive jurisdiction.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Legal Compliance References */}
+            <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <BookOpen className="h-6 w-6 text-primary" />
+                  15. Legal Compliance References
+                </h2>
+                <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
+                  <li>RBI Payment & Settlement Systems Act (2007)</li>
+                  <li>RBL Bank Corporate Internet Banking & API Guidelines</li>
+                  <li>IT Act 2000 & SPDI Rules 2011</li>
+                  <li>Digital Personal Data Protection Act 2023</li>
+                  <li>GST & Indian Contract Act 1872</li>
+                </ul>
+              </CardContent>
+            </Card>
 
             {/* Contact Information */}
             <Card className="border-none shadow-soft bg-background/80 backdrop-blur-sm">
               <CardContent className="p-6 sm:p-8">
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
                   <Mail className="h-6 w-6 text-primary" />
-                  Contact Us
+                  16. Contact Information
                 </h2>
                 
                 <div className="space-y-4">
-                  <p className="text-muted-foreground">
-                    If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, 
-                    please contact us:
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-primary" />
-                        <span className="text-sm">
-                          <strong>Email:</strong> support@learnsconnect.com
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-primary" />
-                        <span className="text-sm">
-                          <strong>Phone:</strong> +91 8489357705
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold">Ellen Information Technology Solutions Pvt. Ltd.</p>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="font-semibold mb-2">Ellen Information Technology Solutions Pvt. Ltd.</p>
+                    <div className="flex items-start gap-2 mb-2">
+                      <MapPin className="h-4 w-4 text-primary mt-1" />
                       <p className="text-sm text-muted-foreground">
                         8/3, Athreyapuram 2nd Street<br />
-                        Choolaimedu, Chennai – 600094<br />
-                        India
+                        Choolaimedu, Chennai – 600094
                       </p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      <Mail className="h-4 w-4 text-primary" />
+                      <span className="text-sm">support@learnsconnect.com</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Phone className="h-4 w-4 text-primary" />
+                      <span className="text-sm">+91 8489357705</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Globe className="h-4 w-4 text-primary" />
+                      <span className="text-sm">www.learnsconnect.com</span>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4">
-                    <p className="text-gray-700 text-sm">
-                      <strong>Response Time:</strong> We aim to respond to all privacy-related inquiries within 30 days. 
-                      For urgent matters, please mark your email as "URGENT - Privacy Concern."
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-blue-800 text-sm">
+                      <strong>Approved by:</strong> Director – Finance & Strategy<br />
+                      Ellen Information Technology Solutions Pvt. Ltd.
                     </p>
                   </div>
                 </div>
